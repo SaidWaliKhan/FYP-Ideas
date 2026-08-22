@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="CrispyKitchen.Application/CrispyKitchen.Application.csproj" />
+  <Project Path="CrispyKitchen.Domain/CrispyKitchen.Domain.csproj" />
+  <Project Path="CrispyKitchen.Infrastructure/CrispyKitchen.Infrastructure.csproj" />
+  <Project Path="CrispyKitchen.WebApi/CrispyKitchen.WebApi.csproj" />
+</Solution>
