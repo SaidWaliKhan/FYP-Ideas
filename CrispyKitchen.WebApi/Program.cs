@@ -1,9 +1,9 @@
 using CrispyKitchen.Application;
 using CrispyKitchen.Infrastructure;
+using CrispyKitchen.WebApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// One line per layer — this is the payoff of Step 3 and Step 4.
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -19,8 +19,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<ExceptionHandlingMiddleware>(); // must be first — catches everything below it
+
 app.UseHttpsRedirection();
-app.UseAuthorization();
+
+app.UseAuthentication(); // WHO are you? (reads the JWT)
+app.UseAuthorization();  // are you ALLOWED to do this? (checks the role)
+
 app.MapControllers();
 
 app.Run();

@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CrispyKitchen.Application.Common.Behaviours;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,8 @@ public static class DependencyInjection
         // Same idea for FluentValidation — any AbstractValidator<T>
         // we write gets picked up automatically.
         services.AddValidatorsFromAssembly(assembly);
-
+        // add the validation behaviours
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehaviour<,>));
         return services;
     }
 }
