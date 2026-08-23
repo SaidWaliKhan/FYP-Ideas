@@ -1,4 +1,5 @@
 using CrispyKitchen.Application.Common.Exceptions;
+using CrispyKitchen.Domain.Exceptions;
 using FluentValidation;
 
 namespace CrispyKitchen.WebApi.Middleware;
@@ -40,6 +41,10 @@ public class ExceptionHandlingMiddleware
     {
         ConflictException => (StatusCodes.Status409Conflict, ex.Message),
         UnauthorizedException => (StatusCodes.Status401Unauthorized, ex.Message),
+        ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message),
+        NotFoundException => (StatusCodes.Status404NotFound, ex.Message),
+        InvalidOrderTransitionException => (StatusCodes.Status400BadRequest, ex.Message),
+
         ValidationException ve => (StatusCodes.Status400BadRequest, string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
         _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
     };

@@ -8,10 +8,10 @@ public class Repository<T> : Application.Common.Interfaces.IRepository<T> where 
     protected readonly ApplicationDbContext Context;
     public Repository(ApplicationDbContext context) => Context = context;
 
-    public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => await Context.Set<T>().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
-    public async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
+    public  virtual async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
         => await Context.Set<T>().ToListAsync(cancellationToken);
 
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)

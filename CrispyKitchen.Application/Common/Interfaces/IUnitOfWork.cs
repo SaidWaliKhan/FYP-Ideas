@@ -7,5 +7,9 @@ namespace CrispyKitchen.Application.Common.Interfaces;
 public interface IUnitOfWork
 {
     IUserRepository Users { get; }
+    IProductRepository Products { get; }
+    IOrderRepository Orders { get; }
+
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
