@@ -4,6 +4,6 @@ namespace CrispyKitchen.Application.Common.Interfaces;
 
 public interface IOrderRepository : IRepository<Order>
 {
-    Task<List<Order>> GetByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default);
-    Task<List<Order>> GetActiveOrdersAsync(CancellationToken cancellationToken = default); // feeds the kitchen dashboard
+    Task<(List<Order> Items, int TotalCount)> GetByCustomerPagedAsync(Guid customerId, int pageNumber, int pageSize, string? status, CancellationToken cancellationToken = default);
+    Task<(List<Order> Items, int TotalCount)> GetActiveOrdersPagedAsync(int pageNumber, int pageSize, string? status, CancellationToken cancellationToken = default);
 }

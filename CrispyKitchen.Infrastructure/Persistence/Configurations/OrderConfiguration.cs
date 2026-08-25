@@ -12,6 +12,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.Id).ValueGeneratedNever();
 
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(30);
+        builder.Property(o => o.PaymentStatus).HasConversion<string>().HasMaxLength(20);
         builder.Property(o => o.FulfillmentType).HasConversion<string>().HasMaxLength(20);
         builder.Property(o => o.DeliveryAddress).HasMaxLength(300);
         builder.Property(o => o.DeliveryCity).HasMaxLength(100);
@@ -34,5 +35,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(o => o.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(o => o.StatusHistory)
+            .WithOne()
+            .HasForeignKey("OrderId")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(o => o.StatusHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

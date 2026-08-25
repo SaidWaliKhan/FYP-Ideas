@@ -1,6 +1,8 @@
 ﻿using System.Text;
+using System.Security.Claims;
 using CrispyKitchen.Application.Common.Interfaces;
 using CrispyKitchen.Infrastructure.Persistence;
+using CrispyKitchen.Infrastructure.Payments;
 using CrispyKitchen.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IPaymentProvider, DummyPaymentProvider>();
+        services.AddScoped<DatabaseInitializer>();
 
         var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>()!;
 
@@ -43,6 +47,34 @@ public static class DependencyInjection
                 ValidIssuer = jwtSettings.Issuer,
                 ValidAudience = jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/orders"))
+                        context.Token = accessToken;
+
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (!Guid.TryParse(userIdValue, out var userId))
+                    {
+                        context.Fail("Invalid user identity.");
+                        return;
+                    }
+
+                    var unitOfWork = context.HttpContext.RequestServices.GetRequiredService<IUnitOfWork>();
+                    var user = await unitOfWork.Users.GetByIdAsync(userId, context.HttpContext.RequestAborted);
+                    if (user is null || !user.IsActive)
+                        context.Fail("This account is inactive.");
+                }
             };
         });
 

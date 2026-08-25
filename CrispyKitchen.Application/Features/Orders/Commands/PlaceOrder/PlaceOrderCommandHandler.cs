@@ -2,6 +2,7 @@ using CrispyKitchen.Application.Common.Exceptions;
 using CrispyKitchen.Application.Common.Interfaces;
 using CrispyKitchen.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CrispyKitchen.Application.Features.Orders.Commands.PlaceOrder;
@@ -11,18 +12,19 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
     private const decimal FlatDeliveryFee = 1.50m;
     private const int MaxConcurrencyRetries = 3;
 
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<PlaceOrderCommandHandler> _logger;
 
 
-    public PlaceOrderCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, ILogger<PlaceOrderCommandHandler> logger)
+    public PlaceOrderCommandHandler(
+        IServiceScopeFactory scopeFactory,
+        ICurrentUserService currentUser,
+        ILogger<PlaceOrderCommandHandler> logger)
     {
-        _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _currentUser = currentUser;
-         _logger = logger;
-
-
+        _logger = logger;
     }
 
     public async Task<OrderDto> Handle(PlaceOrderCommand request, CancellationToken cancellationToken)
@@ -36,7 +38,13 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
         {
             try
             {
-                var result = await PlaceOrderAttempt(request, cancellationToken);
+                // A concurrency failure leaves EF Core's change tracker with
+                // stale entities. Each attempt therefore gets its own scope
+                // and DbContext, so a retry reads the latest stock values.
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                var result = await PlaceOrderAttempt(unitOfWork, request, cancellationToken);
 
                 // {OrderId} and {CustomerId} are STRUCTURED placeholders,
                 // not string interpolation — Serilog stores each as its
@@ -61,13 +69,16 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
         throw new ConflictException("High demand right now — please try placing your order again.");
     }
 
-    private async Task<OrderDto> PlaceOrderAttempt(PlaceOrderCommand request, CancellationToken cancellationToken)
+    private async Task<OrderDto> PlaceOrderAttempt(
+        IUnitOfWork unitOfWork,
+        PlaceOrderCommand request,
+        CancellationToken cancellationToken)
     {
         var orderItems = new List<OrderItem>();
 
         foreach (var line in request.Items)
         {
-            var product = await _unitOfWork.Products.GetByIdAsync(line.ProductId, cancellationToken)
+            var product = await unitOfWork.Products.GetByIdAsync(line.ProductId, cancellationToken)
                 ?? throw new NotFoundException($"Product with id '{line.ProductId}' was not found.");
 
             if (!product.IsAvailable)
@@ -90,12 +101,12 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
             contactPhone: request.ContactPhone,
             deliveryFee: FlatDeliveryFee);
 
-        await _unitOfWork.Orders.AddAsync(order, cancellationToken);
+        await unitOfWork.Orders.AddAsync(order, cancellationToken);
 
         // THIS is where a RowVersion collision surfaces — if another
         // request already saved a change to one of these Product rows
         // since we read it, SaveChangesAsync throws here.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return order.ToDto();
     }

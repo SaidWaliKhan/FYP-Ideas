@@ -4,6 +4,8 @@ using CrispyKitchen.Application.Features.Menu.Commands.RestockProduct;
 using CrispyKitchen.Application.Features.Menu.Commands.SetProductAvailability;
 using CrispyKitchen.Application.Features.Menu.Commands.UpdateProduct;
 using CrispyKitchen.Application.Features.Menu.Queries.GetMenu;
+using CrispyKitchen.Application.Common.Models;
+using CrispyKitchen.Application.Features.Menu.Queries.GetAllProducts;
 using CrispyKitchen.Application.Features.Menu.Queries.GetProductById;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -23,8 +25,22 @@ public class MenuController : ControllerBase
     // the menu board, only to actually order.
     [HttpGet]
     [AllowAnonymous]
-    public async Task<ActionResult<List<ProductDto>>> GetMenu(CancellationToken cancellationToken)
-        => Ok(await _mediator.Send(new GetMenuQuery(), cancellationToken));
+    public async Task<ActionResult<PagedResult<ProductDto>>> GetMenu(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string? search = null,
+        [FromQuery] string? category = null,
+        CancellationToken cancellationToken = default)
+    {
+        pageNumber = Math.Max(pageNumber, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        return Ok(await _mediator.Send(new GetMenuQuery(pageNumber, pageSize, search, category), cancellationToken));
+    }
+
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<PagedResult<ProductDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, CancellationToken cancellationToken = default)
+        => Ok(await _mediator.Send(new GetAllProductsQuery(Math.Max(pageNumber, 1), Math.Clamp(pageSize, 1, 100), search), cancellationToken));
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]

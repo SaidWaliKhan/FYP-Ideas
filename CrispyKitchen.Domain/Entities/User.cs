@@ -14,6 +14,7 @@ public class User : BaseEntity
     public string Email { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
+    public bool IsActive { get; private set; } = true;
 
     private User() { } // EF Core needs this — it builds objects without calling your constructor
 
@@ -31,5 +32,29 @@ public class User : BaseEntity
             PasswordHash = passwordHash,
             Role = role
         };
+    }
+
+    public void SetRole(UserRole role)
+    {
+        if (role == UserRole.Customer)
+            throw new ArgumentException("Staff users cannot be assigned the Customer role.", nameof(role));
+
+        Role = role;
+        MarkUpdated();
+    }
+
+    public void SetActive(bool isActive)
+    {
+        IsActive = isActive;
+        MarkUpdated();
+    }
+
+    public void ResetPasswordHash(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("Password hash is required.", nameof(passwordHash));
+
+        PasswordHash = passwordHash;
+        MarkUpdated();
     }
 }

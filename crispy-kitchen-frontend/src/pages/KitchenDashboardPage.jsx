@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import apiClient from '../api/apiClient';
+import { useAuth } from '../hooks/useAuth';
+import { OrderRealtimeConnection } from '../api/orderRealtime';
 
 const NEXT_STATUS = {
   Pending: 'Confirmed',
   Confirmed: 'Preparing',
   Preparing: 'Ready',
-  Ready: 'Delivered',       // covers pickup orders
   OutForDelivery: 'Delivered',
 };
+
+function getNextStatus(order) {
+  if (order.status === 'Ready') {
+    return order.fulfillmentType === 'Delivery' ? 'OutForDelivery' : 'Delivered';
+  }
+
+  return NEXT_STATUS[order.status];
+}
 
 // Must match CrispyKitchen.Domain.Enums.OrderStatus's numeric values exactly.
 const STATUS_TO_INT = {
@@ -17,22 +26,36 @@ const STATUS_TO_INT = {
 const COLUMNS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'OutForDelivery'];
 
 export default function KitchenDashboardPage() {
+  const { token } = useAuth();
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  async function loadOrders() {
-    const { data } = await apiClient.get('/orders/active');
-    setOrders(data);
-  }
+  const loadOrders = useCallback(async () => {
+    const { data } = await apiClient.get('/orders/active', { params: { pageNumber, pageSize: 50 } });
+    setOrders(data.items);
+    setTotalPages(data.totalPages);
+  }, [pageNumber]);
 
   useEffect(() => {
-    loadOrders();
-    const interval = setInterval(loadOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    const loadTimer = window.setTimeout(() => {
+      loadOrders();
+    }, 0);
+    const connection = new OrderRealtimeConnection(token);
+    connection.on('OrderCreated', loadOrders);
+    connection.on('OrderUpdated', loadOrders);
+    connection.start()
+      .then(() => connection.invoke('SubscribeToKitchen'))
+      .catch((connectionError) => setError(connectionError.message));
+    return () => {
+      window.clearTimeout(loadTimer);
+      connection.stop();
+    };
+  }, [loadOrders, token]);
 
   async function advance(order) {
-    const nextStatus = NEXT_STATUS[order.status];
+    const nextStatus = getNextStatus(order);
     if (!nextStatus) return;
 
     try {
@@ -63,14 +86,17 @@ export default function KitchenDashboardPage() {
                 <ul>
                   {o.items.map((i) => <li key={i.productId}>{i.quantity}x {i.productName}</li>)}
                 </ul>
-                {NEXT_STATUS[status] && (
-                  <button onClick={() => advance(o)}>Mark {NEXT_STATUS[status]}</button>
+                {getNextStatus(o) && (
+                  <button onClick={() => advance(o)}>Mark {getNextStatus(o)}</button>
                 )}
               </div>
             ))}
           </div>
         ))}
       </div>
+      <button onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous page</button>
+      <span> Page {pageNumber} of {totalPages || 1} </span>
+      <button onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next page</button>
     </div>
   );
 }

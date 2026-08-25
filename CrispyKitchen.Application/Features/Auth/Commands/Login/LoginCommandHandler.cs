@@ -30,7 +30,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResult>
         // "wrong password" separately, an attacker could use that to
         // figure out which emails are registered — a real vulnerability
         // class called a "user enumeration" attack.
-        if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+        if (user is null || !user.IsActive || !_passwordHasher.Verify(request.Password, user.PasswordHash))
             throw new UnauthorizedException("Invalid email or password.");
 
         var token = _jwtTokenGenerator.GenerateToken(user);

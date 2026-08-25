@@ -1,5 +1,6 @@
 using CrispyKitchen.Application.Common.Models;
 using CrispyKitchen.Application.Features.Auth.Commands.Login;
+using CrispyKitchen.Application.Features.Auth.Commands.RecoverCustomerPassword;
 using CrispyKitchen.Application.Features.Auth.Commands.Register;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -31,5 +32,12 @@ public class AuthController : ControllerBase
     {
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPost("recover-password")]
+    public async Task<IActionResult> RecoverPassword(RecoverCustomerPasswordCommand command, CancellationToken cancellationToken)
+    {
+        await _mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 }

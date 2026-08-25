@@ -1,9 +1,10 @@
 using CrispyKitchen.Application.Common.Interfaces;
+using CrispyKitchen.Application.Common.Models;
 using MediatR;
 
 namespace CrispyKitchen.Application.Features.Orders.Queries.GetMyOrders;
 
-public class GetMyOrdersQueryHandler : IRequestHandler<GetMyOrdersQuery, List<OrderDto>>
+public class GetMyOrdersQueryHandler : IRequestHandler<GetMyOrdersQuery, PagedResult<OrderDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
@@ -14,9 +15,9 @@ public class GetMyOrdersQueryHandler : IRequestHandler<GetMyOrdersQuery, List<Or
         _currentUser = currentUser;
     }
 
-    public async Task<List<OrderDto>> Handle(GetMyOrdersQuery request, CancellationToken cancellationToken)
+    public async Task<PagedResult<OrderDto>> Handle(GetMyOrdersQuery request, CancellationToken cancellationToken)
     {
-        var orders = await _unitOfWork.Orders.GetByCustomerAsync(_currentUser.UserId, cancellationToken);
-        return orders.Select(o => o.ToDto()).ToList();
+        var (orders, totalCount) = await _unitOfWork.Orders.GetByCustomerPagedAsync(_currentUser.UserId, request.PageNumber, request.PageSize, request.Status, cancellationToken);
+        return new PagedResult<OrderDto>(orders.Select(order => order.ToDto()).ToList(), request.PageNumber, request.PageSize, totalCount);
     }
 }

@@ -1,6 +1,14 @@
-@CrispyKitchen.WebApi_HostAddress = http://localhost:5139
+@CrispyKitchen.WebApi_HostAddress = http://localhost:5001
 
-GET {{CrispyKitchen.WebApi_HostAddress}}/weatherforecast/
+GET {{CrispyKitchen.WebApi_HostAddress}}/api/menu
 Accept: application/json
 
 ###
+
+POST {{CrispyKitchen.WebApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "Ayyankhan18@gmail.com",
+  "password": "Ayyankhan18"
+}

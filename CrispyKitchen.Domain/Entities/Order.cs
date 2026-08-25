@@ -14,10 +14,13 @@ namespace CrispyKitchen.Domain.Entities;
 public class Order : BaseEntity
 {
     private readonly List<OrderItem> _items = new();
+    private readonly List<OrderStatusHistory> _statusHistory = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+    public IReadOnlyCollection<OrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
 
     public Guid CustomerId { get; private set; }
     public OrderStatus Status { get; private set; }
+    public PaymentStatus PaymentStatus { get; private set; }
     public FulfillmentType FulfillmentType { get; private set; }
 
     public string? DeliveryAddress { get; private set; }
@@ -54,7 +57,8 @@ public class Order : BaseEntity
             DeliveryCity = deliveryCity,
             ContactPhone = contactPhone,
             DeliveryFee = fulfillmentType == FulfillmentType.Delivery ? deliveryFee : 0,
-            Status = OrderStatus.Pending
+            Status = OrderStatus.Pending,
+            PaymentStatus = CrispyKitchen.Domain.Enums.PaymentStatus.Pending
         };
 
         order._items.AddRange(items);
@@ -70,18 +74,31 @@ public class Order : BaseEntity
         [OrderStatus.Pending] = new[] { OrderStatus.Confirmed, OrderStatus.Cancelled },
         [OrderStatus.Confirmed] = new[] { OrderStatus.Preparing, OrderStatus.Cancelled },
         [OrderStatus.Preparing] = new[] { OrderStatus.Ready },
-        [OrderStatus.Ready] = new[] { OrderStatus.OutForDelivery, OrderStatus.Delivered }, // Delivered directly covers Pickup
         [OrderStatus.OutForDelivery] = new[] { OrderStatus.Delivered },
         [OrderStatus.Delivered] = Array.Empty<OrderStatus>(),
         [OrderStatus.Cancelled] = Array.Empty<OrderStatus>()
     };
 
-    public void AdvanceTo(OrderStatus newStatus)
+    public void AdvanceTo(OrderStatus newStatus, Guid changedByUserId, string changedByName)
     {
-        if (!ValidTransitions.TryGetValue(Status, out var allowed) || !allowed.Contains(newStatus))
+        var allowed = Status == OrderStatus.Ready
+            ? FulfillmentType == FulfillmentType.Delivery
+                ? new[] { OrderStatus.OutForDelivery }
+                : new[] { OrderStatus.Delivered }
+            : ValidTransitions.GetValueOrDefault(Status, Array.Empty<OrderStatus>());
+
+        if (!allowed.Contains(newStatus))
             throw new InvalidOrderTransitionException(Status, newStatus);
 
+        var previousStatus = Status;
         Status = newStatus;
+        _statusHistory.Add(OrderStatusHistory.Create(previousStatus, newStatus, changedByUserId, changedByName));
+        MarkUpdated();
+    }
+
+    public void SetPaymentStatus(PaymentStatus paymentStatus)
+    {
+        PaymentStatus = paymentStatus;
         MarkUpdated();
     }
 }

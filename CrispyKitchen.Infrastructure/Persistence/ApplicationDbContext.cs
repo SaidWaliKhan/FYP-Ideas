@@ -1,17 +1,9 @@
 using CrispyKitchen.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CrispyKitchen.Infrastructure.Persistence;
 
-/// The single EF Core "gateway" to the database. Empty for now —
-/// we'll add DbSet<Product>, DbSet<Order> etc. as we build each feature.
-
-
-// IdentityDbContext gives us the Users/Roles/UserRoles tables for free —
-// we don't hand-roll a Users table, we extend the one Identity already
-// designed (and battle-tested) for us.
+/// The single EF Core gateway to the database.
 public class ApplicationDbContext : DbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
@@ -22,6 +14,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<CustomerCart> Carts => Set<CustomerCart>();
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -21,5 +21,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.Email).IsUnique(); // enforced at DB level too, not just app level
         builder.Property(u => u.PasswordHash).IsRequired();
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(50);
+        builder.Property(u => u.IsActive);
     }
 }

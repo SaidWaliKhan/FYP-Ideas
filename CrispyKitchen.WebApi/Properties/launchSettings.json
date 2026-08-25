@@ -7,7 +7,10 @@
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5001",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "BootstrapAdmin__FullName": "Ayyan khan",
+        "BootstrapAdmin__Email": "Ayyankhan18@gmail.com",
+        "BootstrapAdmin__Password": "Ayyankhan18"
       }
     },
     "https": {
@@ -16,7 +19,10 @@
       "launchBrowser": false,
       "applicationUrl": "https://localhost:7000;http://localhost:5001",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "BootstrapAdmin__FullName": "Ayyan khan",
+        "BootstrapAdmin__Email": "Ayyankhan18@gmail.com",
+        "BootstrapAdmin__Password": "Ayyankhan18"
       }
     }
   }

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,6 +29,7 @@ export default function LoginPage() {
     <form onSubmit={handleSubmit}>
       <h2>Login</h2>
 
+      {location.state?.message && <p style={{ color: 'green' }}>{location.state.message}</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <input
@@ -47,6 +49,10 @@ export default function LoginPage() {
       />
 
       <button type="submit">Log in</button>
+
+      <p>
+        <Link to="/forgot-password">Forgot password?</Link>
+      </p>
 
       <p>
         No account? <Link to="/register">Register</Link>
