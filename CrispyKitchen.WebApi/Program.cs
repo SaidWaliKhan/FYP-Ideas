@@ -3,6 +3,7 @@ using CrispyKitchen.Application.Common.Interfaces;
 using CrispyKitchen.Infrastructure;
 using CrispyKitchen.WebApi.Middleware;
 using CrispyKitchen.WebApi.Services;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,11 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
+
+
+// Reads the "Serilog" section above and wires it up as the logging provider
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -26,6 +32,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 var app = builder.Build();
 
+// One clean summary line per HTTP request — method, path, status, duration.
+// Placed first so it wraps and times the ENTIRE pipeline, including
+// whatever your exception middleware does further down.
+app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {

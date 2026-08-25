@@ -2,6 +2,7 @@ using CrispyKitchen.Application.Common.Exceptions;
 using CrispyKitchen.Application.Common.Interfaces;
 using CrispyKitchen.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace CrispyKitchen.Application.Features.Orders.Commands.PlaceOrder;
 
@@ -12,11 +13,16 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<PlaceOrderCommandHandler> _logger;
 
-    public PlaceOrderCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+
+    public PlaceOrderCommandHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, ILogger<PlaceOrderCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+         _logger = logger;
+
+
     }
 
     public async Task<OrderDto> Handle(PlaceOrderCommand request, CancellationToken cancellationToken)
@@ -30,12 +36,25 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Order
         {
             try
             {
-                return await PlaceOrderAttempt(request, cancellationToken);
+                var result = await PlaceOrderAttempt(request, cancellationToken);
+
+                // {OrderId} and {CustomerId} are STRUCTURED placeholders,
+                // not string interpolation — Serilog stores each as its
+                // own searchable field on the log event, not baked into
+                // a flat sentence. That's the entire point: later you can
+                // filter logs by OrderId directly instead of regex-hunting
+                // through text.
+                _logger.LogInformation(
+                    "Order {OrderId} placed by customer {CustomerId} for {Total:C}",
+                    result.Id, _currentUser.UserId, result.Total);
+
+                return result;
             }
             catch (ConcurrencyConflictException) when (attempt < MaxConcurrencyRetries)
             {
-                // Someone else's order committed first — loop around and
-                // re-read fresh stock levels, then try again.
+                _logger.LogWarning(
+                    "Concurrency conflict placing order for customer {CustomerId}, attempt {Attempt}",
+                    _currentUser.UserId, attempt);
             }
         }
 
