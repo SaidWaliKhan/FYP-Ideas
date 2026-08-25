@@ -10,6 +10,17 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
     {
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedNever();
+        
+        builder.Property(p => p.StockQuantity);
+
+    // A shadow property: it exists in the database and EF Core tracks
+    // it, but there's NO corresponding C# property on Product itself.
+    // This is deliberate — RowVersion is a pure persistence detail, and
+    // Domain shouldn't need to know or care that it exists. EF Core
+    // auto-updates it on every save; SQL Server generates a new value
+    // every time the row changes.
+    builder.Property<byte[]>("RowVersion").IsRowVersion();
+
 
         builder.Property(p => p.Name).IsRequired().HasMaxLength(150);
         builder.Property(p => p.Description).HasMaxLength(1000);

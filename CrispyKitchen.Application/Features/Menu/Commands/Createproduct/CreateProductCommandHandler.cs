@@ -17,7 +17,8 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
             request.Price,
             request.Category, 
             request.ImageUrl, 
-            request.IsFeatured);
+            request.IsFeatured,
+            request.StockQuantity);
 
         await _unitOfWork.Products.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

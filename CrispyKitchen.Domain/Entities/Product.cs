@@ -19,17 +19,30 @@ public class Product : BaseEntity
     public string? ImageUrl { get; private set; }
     public bool IsAvailable { get; private set; } = true;
     public bool IsFeatured { get; private set; }
+    public int StockQuantity { get; private set; } // NEW
+
 
     private Product() { }
 
     public static Product Create(
-        string name, string description, decimal price,
-        ProductCategory category, string? imageUrl, bool isFeatured)
+        string name, 
+        string description, 
+        decimal price,
+        ProductCategory category, 
+        string? imageUrl, 
+        bool isFeatured, 
+        int stockQuantity)
+    
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Product name is required.", nameof(name));
+        
         if (price <= 0)
             throw new ArgumentException("Price must be greater than zero.", nameof(price));
+        
+        if (stockQuantity < 0)
+            throw new ArgumentException("Stock cannot be negative.", nameof(stockQuantity));
+
 
         return new Product
         {
@@ -39,7 +52,8 @@ public class Product : BaseEntity
             Category = category,
             ImageUrl = imageUrl,
             IsFeatured = isFeatured,
-            IsAvailable = true
+            StockQuantity = stockQuantity,
+            IsAvailable = stockQuantity > 0
         };
     }
 
@@ -64,6 +78,31 @@ public class Product : BaseEntity
     public void SetAvailability(bool isAvailable)
     {
         IsAvailable = isAvailable;
+        MarkUpdated();
+    }
+
+    
+    public void DecreaseStock(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+        if (StockQuantity < quantity)
+            throw new Domain.Exceptions.InsufficientStockException(Name, StockQuantity, quantity);
+
+        StockQuantity -= quantity;
+        if (StockQuantity == 0)
+            IsAvailable = false; // auto sold-out — no separate admin action needed
+
+        MarkUpdated();
+    }
+
+        public void Restock(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+
+        StockQuantity += quantity;
+        IsAvailable = true;
         MarkUpdated();
     }
 }

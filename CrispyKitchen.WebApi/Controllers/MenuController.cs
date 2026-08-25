@@ -1,5 +1,6 @@
 using CrispyKitchen.Application.Features.Menu;
 using CrispyKitchen.Application.Features.Menu.Commands.CreateProduct;
+using CrispyKitchen.Application.Features.Menu.Commands.RestockProduct;
 using CrispyKitchen.Application.Features.Menu.Commands.SetProductAvailability;
 using CrispyKitchen.Application.Features.Menu.Commands.UpdateProduct;
 using CrispyKitchen.Application.Features.Menu.Queries.GetMenu;
@@ -64,5 +65,15 @@ public class MenuController : ControllerBase
             return BadRequest("Route id and body id must match.");
 
         return Ok(await _mediator.Send(command, cancellationToken));
+    }
+
+    [HttpPatch("{id:guid}/restock")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<ProductDto>> Restock(Guid id, RestockProductCommand command, CancellationToken cancellationToken)
+    {
+    if (id != command.Id)
+        return BadRequest("Route id and body id must match.");
+
+    return Ok(await _mediator.Send(command, cancellationToken));
     }
 }

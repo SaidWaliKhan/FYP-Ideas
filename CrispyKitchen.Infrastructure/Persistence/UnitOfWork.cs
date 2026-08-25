@@ -1,5 +1,7 @@
+using CrispyKitchen.Application.Common.Exceptions;
 using CrispyKitchen.Application.Common.Interfaces;
 using CrispyKitchen.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace CrispyKitchen.Infrastructure.Persistence;
 
@@ -18,6 +20,16 @@ public class UnitOfWork : IUnitOfWork
         Orders = new OrderRepository(context);
     }
 
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        => _context.SaveChangesAsync(cancellationToken);
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+{
+    try
+    {
+        return await _context.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        throw new ConcurrencyConflictException(
+            "One or more items were modified by another request at the same time. Please try again.");
+    }
+}
 }

@@ -9,4 +9,6 @@ public record CreateProductCommand(
     decimal Price,
     ProductCategory Category,
     string? ImageUrl,
-    bool IsFeatured) : IRequest<ProductDto>;
+    bool IsFeatured,
+    int StockQuantity
+    ) : IRequest<ProductDto>;

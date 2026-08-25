@@ -14,5 +14,6 @@ public record ProductDto(
     string Category,
     string? ImageUrl,
     bool IsAvailable,
-    bool IsFeatured
+    bool IsFeatured,
+    int StockQuantity
     );

@@ -12,5 +12,7 @@ public static class ProductMappingExtensions
         product.Category.ToString(), 
         product.ImageUrl,
         product.IsAvailable, 
-        product.IsFeatured);
+        product.IsFeatured,
+        product.StockQuantity
+        );
 }

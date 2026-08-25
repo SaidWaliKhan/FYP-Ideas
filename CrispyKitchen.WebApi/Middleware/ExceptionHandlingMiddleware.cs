@@ -44,6 +44,8 @@ public class ExceptionHandlingMiddleware
         ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message),
         NotFoundException => (StatusCodes.Status404NotFound, ex.Message),
         InvalidOrderTransitionException => (StatusCodes.Status400BadRequest, ex.Message),
+        InsufficientStockException => (StatusCodes.Status409Conflict, ex.Message),
+        ConcurrencyConflictException => (StatusCodes.Status409Conflict, ex.Message),
 
         ValidationException ve => (StatusCodes.Status400BadRequest, string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
         _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
