@@ -1,265 +1,50 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { useAuth } from '../hooks/useAuth';
+import foodHero from '../assets/food-hero.png';
 
 const CART_STORAGE_KEY = 'ck_cart';
-
-function readSavedCart() {
-  try {
-    const savedCart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) ?? '[]');
-    return Array.isArray(savedCart) ? savedCart : [];
-  } catch {
-    return [];
-  }
-}
+const categoryImages = { Burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80', Chicken: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80', Sides: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=800&q=80', Drinks: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=800&q=80', Desserts: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=800&q=80' };
+function readSavedCart() { try { const saved = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) ?? '[]'); return Array.isArray(saved) ? saved : []; } catch { return []; } }
 
 export default function MenuPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { token, role } = useAuth();
-
   const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState(() => searchParams.get('search') ?? '');
+  const [category, setCategory] = useState(() => searchParams.get('category') ?? '');
   const [pageNumber, setPageNumber] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [cart, setCart] = useState(readSavedCart);
   const [error, setError] = useState('');
-  const [fulfillmentType, setFulfillmentType] = useState('Pickup');
-  const [contactPhone, setContactPhone] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryCity, setDeliveryCity] = useState('');
-  const [isReviewing, setIsReviewing] = useState(false);
   const [loadedCartToken, setLoadedCartToken] = useState(null);
 
   useEffect(() => {
-    apiClient.get('/menu', { params: { pageNumber, pageSize: 12, search: search || undefined, category: category || undefined } })
-      .then((res) => { setProducts(res.data.items); setTotalPages(res.data.totalPages); });
+    const syncTimer = window.setTimeout(() => {
+      setSearch(searchParams.get('search') ?? '');
+      setCategory(searchParams.get('category') ?? '');
+      setPageNumber(1);
+    }, 0);
+    return () => window.clearTimeout(syncTimer);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setIsLoading(true); setError(''); apiClient.get('/menu', { params: { pageNumber, pageSize: 12, search: search || undefined, category: category || undefined } }).then((res) => { setProducts(res.data.items); setTotalPages(res.data.totalPages); }).catch((err) => setError(err.response?.data?.error ?? 'Could not load the menu.')).finally(() => setIsLoading(false)); }, 0);
+    return () => window.clearTimeout(timer);
   }, [pageNumber, search, category]);
+  useEffect(() => { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); window.dispatchEvent(new Event('storage')); }, [cart]);
+  useEffect(() => { if (!token || role !== 'Customer') return; apiClient.get('/cart').then((res) => { const savedImages = Object.fromEntries(readSavedCart().map((item) => [item.productId, item.imageUrl])); setCart(res.data.items.map((item) => ({ productId: item.productId, name: item.productName, price: item.unitPrice, quantity: item.quantity, imageUrl: savedImages[item.productId] }))); setLoadedCartToken(token); }).catch(() => {}); }, [token, role]);
+  useEffect(() => { if (!token || role !== 'Customer' || loadedCartToken !== token) return; const saveTimer = window.setTimeout(() => { apiClient.put('/cart', { items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity })) }).catch(() => {}); }, 400); return () => window.clearTimeout(saveTimer); }, [cart, token, role, loadedCartToken]);
 
-  useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-  }, [cart]);
+  function addToCart(product) { setCart((previous) => { const existing = previous.find((item) => item.productId === product.id); if (existing) { if (existing.quantity >= product.stockQuantity) return previous; return previous.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item); } return [...previous, { productId: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl || categoryImages[product.category] || foodHero, quantity: 1 }]; }); }
+  function changeQuantity(productId, amount) { setCart((previous) => previous.flatMap((item) => { if (item.productId !== productId) return [item]; const product = products.find((candidate) => candidate.id === productId); const quantity = item.quantity + amount; if (quantity <= 0) return []; if (product && quantity > product.stockQuantity) return [item]; return [{ ...item, quantity }]; })); }
+  function removeFromCart(productId) { setCart((previous) => previous.filter((item) => item.productId !== productId)); }
+  function beginCheckout() { if (!token || role !== 'Customer') { navigate('/login', { state: { from: '/checkout' } }); return; } navigate('/checkout'); }
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  useEffect(() => {
-    if (!token || role !== 'Customer') return;
-    apiClient.get('/cart').then((res) => {
-      setCart(res.data.items.map((item) => ({ productId: item.productId, name: item.productName, price: item.unitPrice, quantity: item.quantity })));
-      setLoadedCartToken(token);
-    });
-  }, [token, role]);
-
-  useEffect(() => {
-    if (!token || role !== 'Customer' || loadedCartToken !== token) return;
-    const saveTimer = window.setTimeout(() => {
-      apiClient.put('/cart', { items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity })) });
-    }, 400);
-    return () => window.clearTimeout(saveTimer);
-  }, [cart, token, role, loadedCartToken]);
-
-  function addToCart(product) {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
-
-      if (existing) {
-        if (existing.quantity >= product.stockQuantity) return prev;
-
-        return prev.map((i) =>
-          i.productId === product.id
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-        },
-      ];
-    });
-  }
-
-  function changeQuantity(productId, amount) {
-    setCart((previous) => {
-      const product = products.find((item) => item.id === productId);
-
-      return previous.flatMap((item) => {
-        if (item.productId !== productId) return [item];
-
-        const quantity = item.quantity + amount;
-        if (quantity <= 0) return [];
-        if (product && quantity > product.stockQuantity) return [item];
-        return [{ ...item, quantity }];
-      });
-    });
-    setIsReviewing(false);
-  }
-
-  function removeFromCart(productId) {
-    setCart((previous) => previous.filter((item) => item.productId !== productId));
-    setIsReviewing(false);
-  }
-
-  const total = cart.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
-  const deliveryFee = fulfillmentType === 'Delivery' ? 1.50 : 0;
-  const checkoutTotal = total + deliveryFee;
-
-  function reviewOrder(event) {
-    event.preventDefault();
-    setError('');
-
-    if (!token || role !== 'Customer') {
-      navigate('/login');
-      return;
-    }
-
-    setIsReviewing(true);
-  }
-
-  async function placeOrder() {
-    setError('');
-
-    try {
-      const { data } = await apiClient.post('/orders', {
-        items: cart.map((i) => ({
-          productId: i.productId,
-          quantity: i.quantity,
-        })),
-        fulfillmentType: fulfillmentType === 'Delivery' ? 0 : 1,
-        contactPhone,
-        deliveryAddress: fulfillmentType === 'Delivery' ? deliveryAddress : null,
-        deliveryCity: fulfillmentType === 'Delivery' ? deliveryCity : null,
-      });
-
-      setCart([]);
-      localStorage.removeItem(CART_STORAGE_KEY);
-      try {
-        await apiClient.put('/cart', { items: [] });
-      } catch {
-        // The order has already been created; cart synchronization will retry later.
-      }
-
-      navigate(`/orders/${data.id}`);
-    } catch (err) {
-      setError(
-        err.response?.data?.error ?? 'Order failed.'
-      );
-    }
-  }
-
-  return (
-    <div>
-      <h2>Menu</h2>
-      <input placeholder="Search menu" value={search} onChange={(e) => { setSearch(e.target.value); setPageNumber(1); }} />
-      <select value={category} onChange={(e) => { setCategory(e.target.value); setPageNumber(1); }}><option value="">All categories</option>{['Chicken', 'Burgers', 'Sides', 'Drinks', 'Desserts'].map((item) => <option key={item}>{item}</option>)}</select>
-
-      <ul>
-        {products.map((p) => (
-          <li key={p.id}>
-            {p.name} — ${p.price.toFixed(2)}{' '}
-
-            <button onClick={() => addToCart(p)} disabled={p.stockQuantity === 0 || cart.find((item) => item.productId === p.id)?.quantity >= p.stockQuantity}>
-              {p.stockQuantity === 0 ? 'Sold out' : 'Add'}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous menu page</button>
-      <span> Page {pageNumber} of {totalPages || 1} </span>
-      <button onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next menu page</button>
-
-      <h3>Cart — ${total.toFixed(2)}</h3>
-
-      <ul>
-        {cart.map((i) => (
-          <li key={i.productId}>
-            {i.name} × {i.quantity} — ${Number(i.price * i.quantity).toFixed(2)}
-            <button onClick={() => changeQuantity(i.productId, -1)} aria-label={`Decrease ${i.name} quantity`}>−</button>
-            <button onClick={() => changeQuantity(i.productId, 1)} aria-label={`Increase ${i.name} quantity`} disabled={i.quantity >= products.find((product) => product.id === i.productId)?.stockQuantity}>+</button>
-            <button onClick={() => removeFromCart(i.productId)}>Remove</button>
-          </li>
-        ))}
-      </ul>
-
-      {cart.length > 0 && (
-        <form onSubmit={reviewOrder}>
-          <h3>Checkout</h3>
-
-          <label>
-            <input
-              type="radio"
-              name="fulfillmentType"
-              checked={fulfillmentType === 'Pickup'}
-              onChange={() => setFulfillmentType('Pickup')}
-            />
-            Pickup
-          </label>
-
-          <label>
-            <input
-              type="radio"
-              name="fulfillmentType"
-              checked={fulfillmentType === 'Delivery'}
-              onChange={() => setFulfillmentType('Delivery')}
-            />
-            Delivery
-          </label>
-
-          <input
-            type="tel"
-            placeholder="Contact phone"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            required
-          />
-
-          {fulfillmentType === 'Delivery' && (
-            <>
-              <input
-                placeholder="Delivery address"
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                required
-              />
-              <input
-                placeholder="City"
-                value={deliveryCity}
-                onChange={(e) => setDeliveryCity(e.target.value)}
-                required
-              />
-            </>
-          )}
-
-          <button type="submit">Review {fulfillmentType.toLowerCase()} order</button>
-        </form>
-      )}
-
-      {isReviewing && (
-        <section>
-          <h3>Review your order</h3>
-          <p><strong>Order type:</strong> {fulfillmentType}</p>
-          <p><strong>Contact phone:</strong> {contactPhone}</p>
-          {fulfillmentType === 'Delivery' && <p><strong>Delivery to:</strong> {deliveryAddress}, {deliveryCity}</p>}
-          <p><strong>Items:</strong> ${total.toFixed(2)}</p>
-          {fulfillmentType === 'Delivery' && <p><strong>Delivery fee:</strong> ${deliveryFee.toFixed(2)}</p>}
-          <p><strong>Total:</strong> ${checkoutTotal.toFixed(2)}</p>
-          <button onClick={() => setIsReviewing(false)}>Back to checkout</button>
-          <button onClick={placeOrder}>Place order</button>
-        </section>
-      )}
-
-      {error && (
-        <p style={{ color: 'red' }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
+  return <main className="page"><section className="menu-intro"><span className="eyebrow">Our menu</span><h1>Made fresh. Served fast.</h1><p>Choose your favourites, then make it yours.</p></section><div className="menu-layout"><section><div className="menu-toolbar"><div className="search-field"><span>⌕</span><input className="filter-input" placeholder="Search the menu" value={search} onChange={(event) => { setSearch(event.target.value); setPageNumber(1); }} />{search && <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">×</button>}</div><button className="filter-button" onClick={() => { setSearch(''); setCategory(''); setPageNumber(1); }}>Reset filters</button></div><div className="category-chips"><button className={!category ? 'chip active' : 'chip'} onClick={() => { setCategory(''); setPageNumber(1); }}>All items</button>{['Chicken', 'Burgers', 'Sides', 'Drinks', 'Desserts'].map((item) => <button className={category === item ? 'chip active' : 'chip'} onClick={() => { setCategory(item); setPageNumber(1); }} key={item}>{item}</button>)}</div><div className="product-grid">{isLoading ? Array.from({ length: 6 }).map((_, index) => <div className="surface product-card skeleton" key={index} />) : products.map((product) => <article className="surface product-card" key={product.id}><div className="product-image"><img src={product.imageUrl || categoryImages[product.category] || foodHero} alt={product.name} /><div className="product-badges">{product.isFeatured && <span className="badge badge-orange">Featured</span>}{(!product.isAvailable || product.stockQuantity === 0) && <span className="badge badge-red">{product.stockQuantity === 0 ? 'Sold out' : 'Unavailable'}</span>}</div></div><div className="product-card__body"><span className="product-category">{product.category}</span><h3>{product.name}</h3><p>{product.description || 'Made fresh to order.'}</p><div className="product-card__footer"><span className="price">${product.price.toFixed(2)}</span><button className="button" onClick={() => addToCart(product)} disabled={!product.isAvailable || product.stockQuantity === 0 || cart.find((item) => item.productId === product.id)?.quantity >= product.stockQuantity}>{!product.isAvailable ? 'Unavailable' : product.stockQuantity === 0 ? 'Sold out' : 'Add +'}</button></div></div></article>)}</div>{!isLoading && products.length === 0 && <div className="surface empty-state"><strong>No matches found</strong><p>Try another search or browse the full menu.</p><button className="button-secondary" onClick={() => { setSearch(''); setCategory(''); }}>Show all items</button></div>}<div className="pagination"><button className="button-quiet" onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous</button><span>Page {pageNumber} of {totalPages || 1}</span><button className="button-quiet" onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next</button></div></section><aside className="surface cart-panel"><div className="cart-head"><div><span className="eyebrow">Quick cart</span><h3>Your cart</h3></div><span className="badge badge-orange">{itemCount} items</span></div>{cart.length === 0 ? <div className="empty-state cart-empty"><strong>Your cart is empty</strong><p>Add something delicious to get started.</p><button className="button-secondary" onClick={() => document.querySelector('.menu-intro')?.scrollIntoView({ behavior: 'smooth' })}>Browse menu</button></div> : <><ul className="cart-items">{cart.map((item) => <li className="cart-item" key={item.productId}><img src={item.imageUrl || foodHero} alt="" /><div className="cart-item__content"><div className="cart-item__top"><div><strong>{item.name}</strong><small>{item.quantity} × ${Number(item.price).toFixed(2)}</small></div><span>${Number(item.price * item.quantity).toFixed(2)}</span></div><div className="cart-item__actions"><button className="icon-button" onClick={() => changeQuantity(item.productId, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button><span className="qty">{item.quantity}</span><button className="icon-button" onClick={() => changeQuantity(item.productId, 1)} aria-label={`Increase ${item.name} quantity`} disabled={item.quantity >= products.find((product) => product.id === item.productId)?.stockQuantity}>+</button><button className="button-quiet" onClick={() => removeFromCart(item.productId)}>Remove</button></div></div></li>)}</ul><div className="cart-total"><span>Subtotal</span><strong>${subtotal.toFixed(2)}</strong></div><button className="button cart-checkout-button" onClick={beginCheckout}>Checkout <span>→</span></button><p className="cart-checkout-note">Choose pickup or delivery at checkout.</p></>}</aside></div>{error && <p className="alert alert-error">{error}</p>}</main>;
 }

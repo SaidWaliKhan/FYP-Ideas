@@ -73,30 +73,26 @@ export default function KitchenDashboardPage() {
   }
 
   return (
-    <div>
-      <h2>Kitchen Dashboard</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <div style={{ display: 'flex', gap: '1rem' }}>
+    <main className="page"><div className="dashboard-header"><span className="eyebrow">Live kitchen</span><h2>Order board</h2><p className="muted">Keep every order moving, in real time.</p></div>
+      {error && <p className="alert alert-error">{error}</p>}
+      <div className="kitchen-board">
         {COLUMNS.map((status) => (
-          <div key={status} style={{ flex: 1, border: '1px solid #ccc', padding: '0.5rem' }}>
-            <h4>{status}</h4>
+          <div key={status} className="kitchen-column">
+            <h3>{status}<span className="badge">{orders.filter((o) => o.status === status).length}</span></h3>
             {orders.filter((o) => o.status === status).map((o) => (
-              <div key={o.id} style={{ border: '1px solid #999', margin: '0.5rem 0', padding: '0.5rem' }}>
+              <div key={o.id} className="kitchen-ticket">
                 <strong>#{o.id.slice(0, 8)}</strong>
-                <ul>
+                <ul className="ticket-items">
                   {o.items.map((i) => <li key={i.productId}>{i.quantity}x {i.productName}</li>)}
                 </ul>
                 {getNextStatus(o) && (
-                  <button onClick={() => advance(o)}>Mark {getNextStatus(o)}</button>
+                  <button className="button" onClick={() => advance(o)}>Mark {getNextStatus(o)}</button>
                 )}
               </div>
             ))}
           </div>
         ))}
       </div>
-      <button onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous page</button>
-      <span> Page {pageNumber} of {totalPages || 1} </span>
-      <button onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next page</button>
-    </div>
+      <div className="pagination"><button className="button-quiet" onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous</button><span>Page {pageNumber} of {totalPages || 1}</span><button className="button-quiet" onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next</button></div></main>
   );
 }

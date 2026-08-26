@@ -15,4 +15,17 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url ?? '';
+    const hasAuthenticatedRequest = Boolean(error.config?.headers?.Authorization);
+    if (status === 401 && hasAuthenticatedRequest && !requestUrl.startsWith('/auth/')) {
+      window.dispatchEvent(new Event('ck:session-expired'));
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default apiClient;

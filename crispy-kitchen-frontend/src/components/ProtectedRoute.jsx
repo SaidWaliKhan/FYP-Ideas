@@ -1,16 +1,17 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { AccessDeniedState } from './AsyncStates';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { token, role } = useAuth();
+  const location = useLocation();
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}`, message: 'Please log in to continue.' }} />;
   }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    // Logged in, but wrong role — send them somewhere safe, not an error page.
-    return <Navigate to="/menu" replace />;
+    return <AccessDeniedState />;
   }
 
   return children;

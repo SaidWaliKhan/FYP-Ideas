@@ -27,40 +27,40 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Reset password</h2>
+    <main className="page-narrow"><form className="surface auth-card form-stack" onSubmit={handleSubmit}>
+      <header><span className="eyebrow">Account recovery</span><h2>Reset your password</h2><p className="muted">Choose a new secure password to get back to ordering.</p></header>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="alert alert-error">{error}</p>}
 
-      <input
+      <div className="field"><label>Email address</label><input
         type="email"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
-      />
+      /></div>
 
-      <input
+      <div className="field"><label>New password</label><input
         type="password"
         placeholder="New password (8+ chars, 1 upper, 1 digit)"
         value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
         required
-      />
+      /></div>
 
-      <input
+      <div className="field"><label>Confirm password</label><input
         type="password"
         placeholder="Confirm new password"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
         required
-      />
+      /></div>
 
-      <button type="submit">Reset password</button>
+      <button className="button" type="submit">Reset password</button>
 
-      <p>
+      <p className="form-note">
         <Link to="/login">Back to login</Link>
       </p>
-    </form>
+    </form></main>
   );
 }

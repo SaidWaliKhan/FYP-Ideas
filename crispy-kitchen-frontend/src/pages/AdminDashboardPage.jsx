@@ -199,16 +199,15 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div>
-      <h2>Admin Dashboard</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {message && <p style={{ color: 'green' }}>{message}</p>}
+    <main className="page"><div className="dashboard-header"><span className="eyebrow">Operations</span><h2>Admin dashboard</h2><p className="muted">Manage the menu, inventory, and team in one place.</p></div>
+      {error && <p className="alert alert-error">{error}</p>}
+      {message && <p className="alert alert-success">{message}</p>}
 
-      <section>
+      <div className="admin-grid"><section className="surface">
         <h3>{editingProductId ? 'Edit menu product' : 'Create a menu product'}</h3>
-        <form onSubmit={saveProduct}>
+        <form className="admin-form" onSubmit={saveProduct}>
           <input placeholder="Name" value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} required />
-          <input placeholder="Description" value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} required />
+          <input className="wide" placeholder="Description" value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} required />
           <input type="number" min="0.01" step="0.01" placeholder="Price" value={product.price} onChange={(e) => setProduct({ ...product, price: e.target.value })} required />
           {!editingProductId && <input type="number" min="0" step="1" placeholder="Starting stock" value={product.stockQuantity} onChange={(e) => setProduct({ ...product, stockQuantity: e.target.value })} required />}
           <select value={product.category} onChange={(e) => setProduct({ ...product, category: Number(e.target.value) })}>
@@ -221,35 +220,34 @@ export default function AdminDashboardPage() {
         </form>
       </section>
 
-      <section>
+      <section className="surface">
         <h3>Inventory</h3>
         <input placeholder="Search inventory" value={productSearch} onChange={(e) => { setProductSearch(e.target.value); setPageNumber(1); }} />
-        {loading ? <p>Loading products...</p> : <ul>
-          {products.map((item) => <li key={item.id}>
+        {loading ? <p className="loading">Loading products...</p> : <div className="data-list">
+          {products.map((item) => <div className="data-row" key={item.id}>
             {item.name} — {item.stockQuantity} in stock — {item.isAvailable ? 'available' : 'hidden'}
             <button onClick={() => restock(item)}>Restock</button>
             <button onClick={() => setAvailability(item)}>{item.isAvailable ? 'Hide' : 'Show'}</button>
             <button onClick={() => startEditing(item)}>Edit</button>
-          </li>)}
-        </ul>}
+          </div>)}</div>}
         <button onClick={() => setPageNumber((page) => page - 1)} disabled={pageNumber === 1}>Previous page</button>
         <span> Page {pageNumber} of {totalPages || 1} </span>
         <button onClick={() => setPageNumber((page) => page + 1)} disabled={pageNumber >= totalPages}>Next page</button>
-      </section>
+      </section></div>
 
-      <section>
+      <section className="surface admin-section">
         <h3>Staff accounts</h3>
-        <ul>{staffUsers.map((user) => <li key={user.id}>{user.fullName} ({user.email}) — {user.isActive ? 'active' : 'inactive'}
+        <div className="data-list">{staffUsers.map((user) => <div className="data-row" key={user.id}>{user.fullName} ({user.email}) — {user.isActive ? 'active' : 'inactive'}
           <select value={user.role === 'Admin' ? 1 : 2} onChange={(e) => updateStaffRole(user, e.target.value)}><option value={1}>Admin</option><option value={2}>Kitchen staff</option></select>
           <button onClick={() => setStaffActive(user)}>{user.isActive ? 'Deactivate' : 'Activate'}</button>
           <button onClick={() => resetStaffPassword(user)}>Reset password</button>
           <button onClick={() => deleteStaff(user)}>Delete</button>
-        </li>)}</ul>
+        </div>)}</div>
       </section>
 
-      <section>
+      <section className="surface admin-section">
         <h3>Create a staff account</h3>
-        <form onSubmit={createStaff}>
+        <form className="admin-form" onSubmit={createStaff}>
           <input placeholder="Full name" value={staff.fullName} onChange={(e) => setStaff({ ...staff, fullName: e.target.value })} required />
           <input type="email" placeholder="Email" value={staff.email} onChange={(e) => setStaff({ ...staff, email: e.target.value })} required />
           <input type="password" placeholder="Password" value={staff.password} onChange={(e) => setStaff({ ...staff, password: e.target.value })} required />
@@ -260,6 +258,6 @@ export default function AdminDashboardPage() {
           <button type="submit">Create account</button>
         </form>
       </section>
-    </div>
+    </main>
   );
 }
