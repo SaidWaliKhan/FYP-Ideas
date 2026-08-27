@@ -3,6 +3,7 @@ using CrispyKitchen.Application.Common.Interfaces;
 
 namespace CrispyKitchen.WebApi.Services;
 
+// to know about uithe current user 
 public class CurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
