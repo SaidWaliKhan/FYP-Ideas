@@ -19,7 +19,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SessionExpiryHandler from './components/SessionExpiryHandler';
 
-export default function App() {
+export default function App() {  
   return (
     <BrowserRouter>
       <AuthProvider>
